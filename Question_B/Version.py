@@ -7,6 +7,7 @@ class Version:
         4.1.0 > 4.1
         1.2b < 1.2
         1.3b > 1.2
+        1.31b > 1.319
         1.2b == 1.2B
         1.2a < 1.2b
     """
@@ -15,11 +16,9 @@ class Version:
     assert len(delimiter) == 1 and re.match(r"[^\w]", delimiter) # ensure delimitor is set to a single non-word character
 
     def __init__(self, version):
-        p = re.compile(r"^\w+(?:[{}]\w+)*$".format(self.delimiter)) # one or more (+) word chars, followed by zero or more (*) non-capturing (?:...) occurences of a one or more (+) word chars preceded by a single delimiter char
-        # will find 1, 1.2.9, 1.2_45.3b, 0.11a
-        # will not find 1.5., .081.4,  3.4..56
+        p = re.compile(r"^[0-9a-zA-Z]+(?:[{}][0-9a-zA-Z]+)*$".format(self.delimiter)) # one or more (+) alphanumeric chars, followed by zero or more (*) non-capturing (?:...) occurences of a one or more (+) alphanumeric chars preceded by a single delimiter char
         if (p.match(version) is None):
-            raise ValueError("Version string supplied must be composed only of sub-versions delimited by '{0}', where the sub-versions contain only alphanumeric or underscore ('_') characters, and must not startwith , end with, or have repeated occurences of the delimiter '{0}'.".format(self.delimiter))
+            raise ValueError("Version string supplied must be composed only of sub-versions delimited by '{0}', where the sub-versions contain only alphanumeric characters, and must not start with , end with, or have repeated occurences of the delimiter '{0}'.".format(self.delimiter))
         self.tokens = self.tokenize(version)
 
     def __repr__(self):
@@ -41,32 +40,29 @@ class Version:
 
     def lower(self):
         return [token.lower() for token in self.tokens]
-        # lower_tokens = []
-        # for token in self.tokens:
-        #     lower_tokens.append(token.lower())
-        
-        # return lower_tokens
 
     def compare(self, version):
         """Version objects are compared in 4 steps:
-        1. the version instance variable of each object is tokenized on the period "." character into a list of substrings
-        2. find the length of the shortest list of substrings and store it in n
+        1. the number of tokens of the Version object with the least amount of tokens is found
+        2. 
         3. """
 
-        n = min(len(self.tokens), len(version.tokens))
         i = 0
-        while (i < n):
-            if (i == len(self.tokens) or i == len(version.tokens)):
-                break
-
+        while (i < min(len(self.tokens), len(version.tokens))):
             comparison = self.tokens[i].compare(version.tokens[i])
             if (comparison): # if the result of the compare is not 0, the tokens were not equal
                 return comparison
 
-        if (len(version_tokens[0]) == len(version_tokens[1])): # all tokens were equal and the versions have the same number of tokens
-            return 0 # the tokens are equal
+            i += 1
         
-        #if Token('\0').compare()
+        if (len(self.tokens) > len(version.tokens)):
+            return self.tokens[i].compare(Token('\0'))
+
+        elif (len(self.tokens) < len(version.tokens)):
+            return Token('\0').compare(version.tokens[i])
+        
+        elif (len(self.tokens) == len(version.tokens)): # all tokens were equal and the versions have the same number of tokens
+            return 0 # the tokens are equal
 
     def compare_special(self, version, ignore_case: bool, lesser_versions: str = None):
         if (ignore_case): # ignore case
@@ -77,7 +73,7 @@ class Version:
 
 def main():
     test_cases = [version_string for version_string in valid_versions + invalid_versions] # build pairs of Line objects form concatenation of test_data tuples
-    test_oracles = (type(None),) * len(valid_versions) + (ValueError,) * len(invalid_versions) # commas necessary
+    test_oracles = (Version,) * len(valid_versions) + (ValueError,) * len(invalid_versions) # commas necessary
     test_results = {"pass": 0, "fail": 0}
 
     for i, test_case in enumerate(test_cases):
@@ -85,13 +81,12 @@ def main():
         
         print("\nTest case {}:\nChecking whether '{}' is a valid version string".format(i+1, test_case), end=' ') # spread the two Line objects in the test_case tuple into the positional parameters of format as their str representation
         
-        ge = None
         try:
-            Version(test_case)
-        except ValueError as le:
-            ge = le
+            result = Version(test_case)
+        except ValueError as e:
+            result = e
         finally:
-            if (type(ge) == oracle):
+            if (type(result) == oracle):
                 print("passed", end=' ')
                 test_results["pass"] += 1
             else:
