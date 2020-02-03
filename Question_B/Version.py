@@ -4,16 +4,17 @@ import re
 
 class Version:
     """
-        4.1.0 > 4.1
+        4.1.0 == 4.1
         1.2b < 1.2
         1.3b > 1.2
         1.31b > 1.31a
+        1.3b < 1.3.4.5
         1.2b == 1.2B
         1.2a < 1.2b
     """
     # class variables
     delimiter = '.' # the delimiter character that separates sub-versions in a version string, typically the period ('.') char. Can be changed to any other non-word character ([^\w]).
-    assert len(delimiter) == 1 and re.match(r"[^\w]", delimiter) # ensure delimitor is set to a single non-word character
+    assert len(delimiter) == 1 and re.match(r"[^0-9a-zA-Z]", delimiter) # ensure delimitor is set to a single non-alphanumeric character
 
     def __init__(self, version):
         version = version.lower()
@@ -22,7 +23,7 @@ class Version:
             self.suffix = p.search(version).group() # set the instance variable suffix to that sequence of letters at the end of the string
             version = p.sub('', version) # remove the alphabetical suffix from the version string
         except AttributeError: # re.search() did not match, there is no alphabetical suffix
-            self.suffix = '@' # set the suffix to the ascii code preceding the first lowercase alphabetical character ('a'), for comparing suffixes later on
+            self.suffix = '`' # set the suffix to the ascii code preceding the first lowercase alphabetical character ('a'), for comparing suffixes later on
         
         # version string must match one or more (+) digits, followed by zero or more (*) non-capturing (?:...) occurences of a one or more (+) digits preceded by a single delimiter char
         if (re.match(r"^\d+(?:[{}]\d+)*$".format(self.delimiter), version) is None):
@@ -34,7 +35,7 @@ class Version:
         return "Version({})".format(str(self))
 
     def __str__(self):
-        """String representation of the Version object mimicking the initializer passed to the constructor call (without the delimiter)."""
+        """String representation of the Version object mimicking the version string initializer passed to the constructor call."""
         return self.untokenize()
 
     def tokenize(self, version):
@@ -47,20 +48,22 @@ class Version:
         return (self.delimiter).join([str(token) for token in self.tokens])
 
     def compare_suffix(self, version):
+        print("comparing suffix")
         i = 0
         while ((i < min(len(self.suffix), len(version.suffix)) - 1) and (self.suffix[i] == version.suffix[i])):
             i += 1
-        return self.suffix[i] == version.suffix[i]
+        print("self suffix lettter, code: {} {}, version suffix letter, code: {} {}".format(self.suffix[i], ord(self.suffix[i]), version.suffix[i], ord(version.suffix[i])))
+        return ord(self.suffix[i]) - ord(version.suffix[i])
 
     def compare(self, version):
-        """Version objects are compared in 4 steps:
+        """Algorithm for comparing version objects:
         1. Iterate over the tokens of both Version objects until reaching the last token of the shorter Version object (fewer tokens) 
         2. For each Token object, compare the Token object of the self Version to the corresponding token of the parameter Version
-        3. If they are equal, continue to the next token, otherwise return the integer result of the comparison
+        3. If the Token objects are equal (equal integer values), continue to the next token, otherwise return the integer result of the comparison
         4. If the end of the shorter list of tokens is reached, return the integer value of the next token of the Version object with more tokens, positive if it is the self object and negative if it is the parameter object
         5. If both Version objects had the same number of tokens, compare the suffixes of both Token object and return the integer result of the comparison
         6. If both suffixes are equal return 0 since bothe Version objects are identical
-        3. """
+        """
 
         i = 0
         while (i < min(len(self.tokens), len(version.tokens))):

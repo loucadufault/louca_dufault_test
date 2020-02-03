@@ -13,6 +13,9 @@ class Token:
         """String representation of the Token object mimicking the initializer passed to the constructor call."""
         return str(self.content)
 
+    def __int__(self):
+        return self.content
+
     def compare(self, token):   
         return int(self.content) - int(token.content)
 
