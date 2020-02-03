@@ -3,13 +3,15 @@ from Version import Version
 
 def version_compare(version_string1 : str, version_string2 : str):
     """Public library function to return if a version string greater than, equal, or less than the other.
-    Accepts 2 version strings as input arguments
+    Accepts 2 version strings as input arguments.
     Returns an integer > 0 if the first version string was greater than the other, an integer < 0 if the first version string was lesser than the other, and 0 if the version string parameters were equal."""
     return Version(version_string1).compare_with(Version(version_string2)) # create anonymous objects
 
 def greatest_version(version_string1, version_string2):
     """Public library function to return if a version string greater than, equal, or less than the other.
-    Accepts accepts 2 version string as input and returns whether one is"""
+    Accepts accepts 2 version string as inputarguments.
+    Returns the version string that is greatest (returns the first version string if equal).
+    """
     comparison = version_compare(version_string1, version_string2)
     if (comparison > 0):
         return version_string1
@@ -33,7 +35,7 @@ def version_compare_validator(versions, oracle: bool):
     
     # validate public functions
     assert same_sign(version_compare(str(versions[0]), str(versions[1])), oracle)
-    #assert str(versions[0]), str(versions[1]), oracle)
+    assert greatest_version(str(versions[0]), str(versions[1])) == [str(versions[1]), str(versions[0]), str(versions[0])][oracle+1]
 
 def main():
     test_cases = [(Version(version_strings[0]), Version(version_strings[1])) for version_strings in greater + greater_edge + equal + equal_edge + lesser_edge + lesser] # build pairs of Version objects from tuples in the concatenation of test_data arrays

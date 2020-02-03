@@ -36,7 +36,7 @@ class Version:
 
     def __str__(self):
         """String representation of the Version object mimicking the version string initializer passed to the constructor call."""
-        return self.untokenize()
+        return self.untokenize() + self.suffix
 
     def tokenize(self, version):
         tokens = []
