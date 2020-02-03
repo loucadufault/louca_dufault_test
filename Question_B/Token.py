@@ -18,8 +18,3 @@ class Token:
 
     def compare(self, token):   
         return int(self.content) - int(token.content)
-
-t = Token("12")
-print(t)
-print(repr(t))
-print(str(t))

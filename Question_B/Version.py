@@ -23,7 +23,7 @@ class Version:
             self.suffix = p.search(version).group() # set the instance variable suffix to that sequence of letters at the end of the string
             version = p.sub('', version) # remove the alphabetical suffix from the version string
         except AttributeError: # re.search() did not match, there is no alphabetical suffix
-            self.suffix = '`' # set the suffix to the ascii code preceding the first lowercase alphabetical character ('a'), for comparing suffixes later on
+            self.suffix = '' # set the suffix to an empty string to indicate it is absent from the version string that the object represents
         
         # version string must match one or more (+) digits, followed by zero or more (*) non-capturing (?:...) occurences of a one or more (+) digits preceded by a single delimiter char
         if (re.match(r"^\d+(?:[{}]\d+)*$".format(self.delimiter), version) is None):
@@ -47,16 +47,39 @@ class Version:
     def untokenize(self):
         return (self.delimiter).join([str(token) for token in self.tokens])
 
-    def compare_suffix(self, version):
-        print("comparing suffix")
+    def compare_suffix_with(self, version):
+        """
+        """
+         # if neither Version objects have a suffix
+        if (not self.suffix and not version.suffix):
+            return 0
+        # if one Version object has a suffix but not the other
+        elif (not version.suffix): # if the self object has a suffix but the version object does not have a suffix, the latter is considered greater
+            return -(ord(self.suffix[0]) - ord('`')) # the opposite of its ASCII code is returned, since a negative return means the self object (object upon which the method call was made) is lesser
+        elif (not self.suffix): # if the self object does not have a suffix but the version object has a suffix, the former is considered greater
+            return (ord(version.suffix[0]) - ord('`')) # # its ASCII code is returned, since a positive return means the self object (object upon which the method call was made) is greater
+        # where '`' is the character whose ascii code preceeds the first lowercase alphabetical character ('a'), and where ord() is a buitlin function that yields the ASCII code of a character
+        
+        # if both Version objects have a suffix
         i = 0
-        while ((i < min(len(self.suffix), len(version.suffix)) - 1) and (self.suffix[i] == version.suffix[i])):
+        while ((i < min(len(self.suffix), len(version.suffix)))): # iterate through the suffixes until reaching the end of the shortest suffix
+            if (self.suffix[i] != version.suffix[i]):
+                return ord(self.suffix[i]) - ord(version.suffix[i])
             i += 1
-        print("self suffix lettter, code: {} {}, version suffix letter, code: {} {}".format(self.suffix[i], ord(self.suffix[i]), version.suffix[i], ord(version.suffix[i])))
-        return ord(self.suffix[i]) - ord(version.suffix[i])
 
-    def compare(self, version):
-        """Algorithm for comparing version objects:
+        # reached the end of the shortest suffix
+
+        if (len(self.suffix) == len(version.suffix)): # if both suffixes had the same length
+            return 0
+
+        try:
+            return ord(self.suffix[i]) - ord('`')
+        except IndexError:
+            return -(ord(version.suffix[i]) - ord('`'))
+
+    def compare_with(self, version):
+        """
+        Algorithm for comparing version objects:
         1. Iterate over the tokens of both Version objects until reaching the last token of the shorter Version object (fewer tokens) 
         2. For each Token object, compare the Token object of the self Version to the corresponding token of the parameter Version
         3. If the Token objects are equal (equal integer values), continue to the next token, otherwise return the integer result of the comparison
@@ -66,29 +89,33 @@ class Version:
         """
 
         i = 0
-        while (i < min(len(self.tokens), len(version.tokens))):
-            comparison = self.tokens[i].compare(version.tokens[i])
+        while (i < min(len(self.tokens), len(version.tokens))): # iterate over the tokens of both Version objects until reaching the last token of the shorter Version object (fewer tokens) 
+            comparison = self.tokens[i].compare(version.tokens[i]) # compare the Token object of the self Version to the corresponding token of the parameter Version
             if (comparison): # if the result of the compare is not 0, the tokens were not equal
-                return comparison
+                return comparison # return the integer result of the comparison
 
-            i += 1
+            i += 1 # otherwise the Token objects were equal (equal integer values), continue to the next token by incrementing counter
         
-        if (len(self.tokens) > len(version.tokens)):
-            return int(self.tokens[i])
+        # end of the shorter list of tokens is reached
+        # , return the integer value of the next token of the Version object with more tokens, positive if it is the self object and negative if it is the parameter object
+        if (len(self.tokens) > len(version.tokens)): # if the self Version object has more tokens
+            return int(self.tokens[i]) # return the integer value of the next Token object in the self Version object's tokens list
+            # may also return 0 if the next token of the self Version object is '0' or '000...', as such versions '1.2.0' and '1.2' are chosen to be identical
 
-        elif (len(self.tokens) < len(version.tokens)):
-            return -int(version.tokens[i])
-        
+        elif (len(self.tokens) < len(version.tokens)): # if the version Version object has more tokens
+            return -int(version.tokens[i]) # return the opposite (to show that the self object is lesser than the version object) of the integer value of the next Token object in the version Version object's tokens list
+            # may also return 0 if the next token of the version Version object is '0' or '000...', as such versions '1.2' and '1.2.0' are chosen to be identical
+
         elif (len(self.tokens) == len(version.tokens)): # all tokens were equal and the versions have the same number of tokens
-            comparison = self.compare_suffix(version)
-            if (comparison):
-                return comparison
-            else:
-                return 0 # the tokens are equal
+            comparison = self.compare_suffix_with(version) # compare the optional suffixes of both Version objects, if neither Version object represents a version string with a suffix, the comparison yields 0 as expected
+            if (comparison): # if the result of the compare is not 0, the suffixes were not equal, or one Version object had a suffix while the other did not
+                return comparison # return the integer result of the comparison
+            else: # otherwise the suffix strings were equal (same length and identical characters, ignoring case) or neither Version object had a suffix
+                return 0 # the Version objects are identical (ignoring case of the suffixes)
 
 def main():
-    test_cases = [version_string for version_string in valid_versions + invalid_versions] # build list of version strings from test_data
-    test_oracles = (Version,) * len(valid_versions) + (ValueError,) * len(invalid_versions) # commas necessary
+    test_cases = [version_string for version_string in valid_version_strings + invalid_version_strings] # build list of version strings from test_data
+    test_oracles = (Version,) * len(valid_version_strings) + (ValueError,) * len(invalid_version_strings) # commas necessary
     test_results = {"pass": 0, "fail": 0}
 
     for i, test_case in enumerate(test_cases):
@@ -113,5 +140,5 @@ def main():
     assert test_results["pass"] + test_results["fail"] == len(test_cases) # ensure all tests have been completed
     print("\nTest results:\n{} completed, {} failed".format(len(test_cases), test_results["fail"])) # display results
 
-if __name__ == '__main__':
-    main()
+if __name__ == '__main__': # if run standalone
+    main() # unit test this module
