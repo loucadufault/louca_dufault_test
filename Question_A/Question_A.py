@@ -27,11 +27,11 @@ def line_overlap_validator(lines, oracle: bool):
     assert lines[0].overlaps(lines[1]) == oracle # check if whether the first Line object overlapping the second Line object is the same as the oracle
     
     # validate public functions
-    assert line_overlap(lines[0].get_endpoints(), lines[1].get_endpoints()) == oracle # validate public function
-    assert line_overlap_from_string(str(lines[0].get_endpoints()), str(lines[1].get_endpoints())) == oracle # validate wrapper public function
+    assert line_overlap(lines[0].get_endpoints(), lines[1].get_endpoints()) == oracle
+    assert line_overlap_from_string(str(lines[0].get_endpoints()), str(lines[1].get_endpoints())) == oracle
     
 def main():
-    test_cases = [(Line.from_pair(endpoints[0]), Line.from_pair(endpoints[1])) for endpoints in overlapping + overlapping_edge + not_overlapping_edge + not_overlapping] # build pairs of Line objects form concatenation of test_data tuples
+    test_cases = [(Line.from_pair(endpoints[0]), Line.from_pair(endpoints[1])) for endpoints in overlapping + overlapping_edge + not_overlapping_edge + not_overlapping] # build pairs of Line objects from tuples in the concatenation of test_data arrays
     test_oracles = (True,) * (len(overlapping) + len(overlapping_edge)) + (False,) * (len(not_overlapping_edge) + len(not_overlapping)) # commas necessary
     test_results = {"pass": 0, "fail": 0}
 
@@ -53,5 +53,5 @@ def main():
     assert test_results["pass"] + test_results["fail"] == len(test_cases) # ensure all tests have been completed
     print("\nTest results:\n{} completed, {} failed".format(len(test_cases), test_results["fail"])) # display results
 
-if __name__ == '__main__':
-    main()
+if __name__ == '__main__': # if run standalone
+    main() # unit test this module
