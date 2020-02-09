@@ -1,16 +1,18 @@
 import time
+from collections import namedtuple
+from typing import Callable, Hashable
 
 class Node:
-    def __init__(self, key, value, expires : bool = True):
+    def __init__(self, key : Hashable, value : Any, expires : bool = True):
         self.key = key
-        self.val = value
+        self.value = value
         self.prev = None
         self.next = None
         self.expires = expires # whether this node expires, should be true for all nodes except the dummy head and tail nodes
         self._refresh()
 
     def set_value(self, value):
-        self.val = value
+        self.value= value
         self._refresh()
 
     def _refresh(self):
@@ -43,8 +45,7 @@ class LRUCache:
     By doing this, we get O(1) access time when retrieving a Node by key (i.e. when retrieving a block of cache by its key) because of the O(1) lookup time of the hash map that indexes the DLL that allows us to skip directly to that Node in the DLL instead of traversing (as well as O(1) time when deleting an invalidated item from the hash map),
         and we get O(1) insert time when adding a Node to the DLL's tail
     """
-
-    def __init__(self, max_size, max_age):
+    def __init__(self, max_size : int = 1000, max_age : int = 86400, read_callback : Callable[[Hashable], Any]):
         self.max_size = max_size # cache capacity
         self.max_age = max_age # cache expiration
         self.hash_map = {} # lookup table for the cache nodes
@@ -56,26 +57,27 @@ class LRUCache:
 
         self.hits, self.misses, self.evictions, self.expiries = 0, 0, 0, 0 # cache performance info
 
-    def get(self, key):
+    def get(self, key : Hashable):
         if key in self.hash_map: # .keys()
             node = self.hash_map[key]
             self._remove(node)
             self._add(node)
             if (node.age < self.max_age):
-                return node.val
+                return node.value
         raise KeyError(key)
 
-    def get(self, key):
+    def get(self, key : Hashable):
         if key in self.hash_map: # .keys()
             node = self.hash_map[key]
             self._remove(node)
 
             if (node.get_time_since_last_refresh() < self.max_age):
                 self._add(node)
-                return node.val
+                return node.value
+        
         raise KeyError(key)
 
-    def put(self, key, value):
+    def put(self, key : Hashable, value : Any):
         if (key in self.hash_map):
             self._remove(self.hash_map[key])
         node = Node(key, value) # updates timestamps
@@ -90,7 +92,8 @@ class LRUCache:
         return self.curr_size
 
     def cache_info(self):
-        pass
+        Info = namedtuple('Info', 'hits misses max_age expiries curr_size max_size evictions')
+        return Info(self.hits, self.misses, self.max_age, self.expiries, self.curr_size, self.max_size, self.evictions)
 
     def _remove(self, node):
         prev_node = node.prev
