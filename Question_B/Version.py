@@ -3,21 +3,12 @@ from test_data import *
 import re
 
 class Version:
-    """
-        4.1.0 == 4.1
-        1.2b < 1.2
-        1.3b > 1.2
-        1.31b > 1.31a
-        1.3b < 1.3.4.5
-        1.2b == 1.2B
-        1.2a < 1.2b
-    """
     # class variables
     delimiter = '.' # the delimiter character that separates sub-versions in a version string, typically the period ('.') char. Can be changed to any other non-word character ([^\w]).
     assert len(delimiter) == 1 and re.match(r"[^0-9a-zA-Z]", delimiter) # ensure delimitor is set to a single non-alphanumeric character
 
     def __init__(self, version):
-        version = version.lower()
+        #version = version.lower()
         p = re.compile(r"[a-zA-Z]+$") # one or more letters at the end of the version string
         try:
             self.suffix = p.search(version).group() # set the instance variable suffix to that sequence of letters at the end of the string
@@ -48,23 +39,21 @@ class Version:
         return (self.delimiter).join([str(token) for token in self.tokens])
 
     def compare_suffix_with(self, version):
-        """
-        """
          # if neither Version objects have a suffix
         if (not self.suffix and not version.suffix):
             return 0
         # if one Version object has a suffix but not the other
         elif (not version.suffix): # if the self object has a suffix but the version object does not have a suffix, the latter is considered greater
-            return -(ord(self.suffix[0]) - ord('`')) # the opposite of its ASCII code is returned, since a negative return means the self object (object upon which the method call was made) is lesser
+            return -(ord(self.suffix.lower()[0]) - ord('`')) # the opposite of its ASCII code is returned, since a negative return means the self object (object upon which the method call was made) is lesser
         elif (not self.suffix): # if the self object does not have a suffix but the version object has a suffix, the former is considered greater
-            return (ord(version.suffix[0]) - ord('`')) # # its ASCII code is returned, since a positive return means the self object (object upon which the method call was made) is greater
+            return (ord(version.suffix.lower()[0]) - ord('`')) # # its ASCII code is returned, since a positive return means the self object (object upon which the method call was made) is greater
         # where '`' is the character whose ascii code preceeds the first lowercase alphabetical character ('a'), and where ord() is a buitlin function that yields the ASCII code of a character
         
         # if both Version objects have a suffix
         i = 0
         while ((i < min(len(self.suffix), len(version.suffix)))): # iterate through the suffixes until reaching the end of the shortest suffix
-            if (self.suffix[i] != version.suffix[i]):
-                return ord(self.suffix[i]) - ord(version.suffix[i])
+            if (self.suffix.lower()[i] != version.suffix.lower()[i]):
+                return ord(self.suffix.lower()[i]) - ord(version.suffix.lower()[i])
             i += 1
 
         # reached the end of the shortest suffix
@@ -73,21 +62,11 @@ class Version:
             return 0
 
         try:
-            return ord(self.suffix[i]) - ord('`')
+            return ord(self.suffix.lower()[i]) - ord('`')
         except IndexError:
-            return -(ord(version.suffix[i]) - ord('`'))
+            return -(ord(version.suffix.lower()[i]) - ord('`'))
 
     def compare_with(self, version):
-        """
-        Algorithm for comparing version objects:
-        1. Iterate over the tokens of both Version objects until reaching the last token of the shorter Version object (fewer tokens) 
-        2. For each Token object, compare the Token object of the self Version to the corresponding token of the parameter Version
-        3. If the Token objects are equal (equal integer values), continue to the next token, otherwise return the integer result of the comparison
-        4. If the end of the shorter list of tokens is reached, return the integer value of the next token of the Version object with more tokens, positive if it is the self object and negative if it is the parameter object
-        5. If both Version objects had the same number of tokens, compare the suffixes of both Token object and return the integer result of the comparison
-        6. If both suffixes are equal return 0 since bothe Version objects are identical
-        """
-
         i = 0
         while (i < min(len(self.tokens), len(version.tokens))): # iterate over the tokens of both Version objects until reaching the last token of the shorter Version object (fewer tokens) 
             comparison = self.tokens[i].compare(version.tokens[i]) # compare the Token object of the self Version to the corresponding token of the parameter Version

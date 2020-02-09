@@ -25,7 +25,6 @@ def same_sign(a, b):
         return True
     elif (a == 0 and b == 0):
          return True
-        
     return False
 
 def version_compare_validator(versions, oracle: bool):
@@ -45,7 +44,7 @@ def main():
     for i, test_case in enumerate(test_cases):
         oracle = test_oracles[i]
         
-        print("\nTest case {}:\nComparing version string '{}' with version string '{}'".format(i+1, *test_case), end=' ') # spread the two Line objects in the test_case tuple into the positional parameters of format as their str representation
+        print("\nTest case {}:\nComparing version string '{}' with version string '{}'".format(i+1, *test_case), end=' ') # spread the two Version objects in the test_case tuple into the positional parameters of format as their str representation
         
         try:
             version_compare_validator(test_case, oracle)
