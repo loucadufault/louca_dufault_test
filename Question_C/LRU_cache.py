@@ -1,6 +1,6 @@
 import time
 from collections import namedtuple
-from typing import Callable, Hashable
+from typing import Callable, Hashable, Any
 
 class Node:
     def __init__(self, key : Hashable, value : Any, expires : bool = True):
@@ -11,7 +11,7 @@ class Node:
         self.expires = expires # whether this node expires, should be true for all nodes except the dummy head and tail nodes
         self._refresh()
 
-    def set_value(self, value):
+    def set_value(self, value : Any):
         self.value= value
         self._refresh()
 
@@ -45,7 +45,7 @@ class LRUCache:
     By doing this, we get O(1) access time when retrieving a Node by key (i.e. when retrieving a block of cache by its key) because of the O(1) lookup time of the hash map that indexes the DLL that allows us to skip directly to that Node in the DLL instead of traversing (as well as O(1) time when deleting an invalidated item from the hash map),
         and we get O(1) insert time when adding a Node to the DLL's tail
     """
-    def __init__(self, max_size : int = 1000, max_age : int = 86400, read_callback : Callable[[Hashable], Any]):
+    def __init__(self, max_size : int = 1000, max_age : int = 86400, read_callback : Callable[[Hashable], Any] = None):
         self.max_size = max_size # cache capacity
         self.max_age = max_age # cache expiration
         self.hash_map = {} # lookup table for the cache nodes
@@ -53,29 +53,29 @@ class LRUCache:
         self.tail = Node(0, 0, expires=False)
         self.head.next = self.tail # connect the head and tail at the start since the DLL is empty
         self.tail.prev = self.head # as the DLL grows, Nodes are added between the head and tail, that remain as dummy nodes
-        self.curr_size = 0 # cache sixe, number of nodes in DLL (excluding head and tail dummy nodes) = number of items in hash map
+
+        self.read_callback = read_callback # can be None
 
         self.hits, self.misses, self.evictions, self.expiries = 0, 0, 0, 0 # cache performance info
 
     def get(self, key : Hashable):
-        if key in self.hash_map: # .keys()
-            node = self.hash_map[key]
-            self._remove(node)
-            self._add(node)
-            if (node.age < self.max_age):
-                return node.value
-        raise KeyError(key)
+        if key in self.hash_map: # .keys(), if the requested key is in the Cache's hash map, then the Node with that key will be somewhere in the DLL
+            node = self.hash_map[key] # O(1) find the Node object by its key in the hash map
+            self._remove(node) # remove the node from its current position in the DLL, to eventually be reordered as the most recently used item in the DLL (if it has not expired)
 
-    def get(self, key : Hashable):
-        if key in self.hash_map: # .keys()
-            node = self.hash_map[key]
-            self._remove(node)
+            if (node.get_time_since_last_refresh() < self.max_age): # if the node has not yet expired (it was last updated more recently than the max age threshold)
+                self.hits += 1
+                self._add(node) # add the node back to the DLL, but as the most recent item (adjacent to the DLL tail dummy node)
+                return node.value 
+            else: # node expired 
+                self.expiries += 1
+                del self.hash_map[node.key] # remove referencee from the hash map, the node is not added back to the DLL so remove its indexed reference from the hash map
 
-            if (node.get_time_since_last_refresh() < self.max_age):
-                self._add(node)
-                return node.value
-        
-        raise KeyError(key)
+        self.misses += 1 # misses include expiries
+        if (self.read_callback in None): # if there was no provided callback (or it was provided as None)
+            raise KeyError(key) # 
+        else:
+            pass
 
     def put(self, key : Hashable, value : Any):
         if (key in self.hash_map):
@@ -84,16 +84,17 @@ class LRUCache:
         self._add(node)
         self.hash_map[key] = node
         if (len(self.hash_map) > self.max_size):
+            self.evictions += 1
             node = self.head.next
             self._remove(node)
-            del self.hash_map[n.key]
+            del self.hash_map[node.key]
 
     def size(self):
-        return self.curr_size
+        return len(self.hash_map)
 
     def cache_info(self):
-        Info = namedtuple('Info', 'hits misses max_age expiries curr_size max_size evictions')
-        return Info(self.hits, self.misses, self.max_age, self.expiries, self.curr_size, self.max_size, self.evictions)
+        CacheInfo = namedtuple('Info', 'hits misses max_age expiries curr_size max_size evictions')
+        return CacheInfo(self.hits, self.misses, self.max_age, self.expiries, len(self.hash_map), self.max_size, self.evictions)
 
     def _remove(self, node):
         prev_node = node.prev
@@ -101,7 +102,7 @@ class LRUCache:
 
         prev_node.next = next_node # connect previous node to the node's next
         next_node.prev = prev_node # connect next node to the node's previous
-        # the node is skipped over in the DLL, no more references to the node so it will be GC'd
+        # the node is skipped over in the DLL
 
     def _add(self, node):
         most_recent_node = self.tail.prev # the node at the tail of the DLL (i.e. right before the dummy tail node) is the one that has been most recently retrieved or updated
