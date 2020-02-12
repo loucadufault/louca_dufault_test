@@ -43,9 +43,11 @@ class LRUCache:
     
     Although the cache nodes themselves are stored in the DLL, the LRUCache indexes the DLL with an internal lookup table as a hash map where each item in the dict is a Node's key as the item key and the Node itself (by reference) as the item value.
     By doing this, we get O(1) access time when retrieving a Node by key (i.e. when retrieving a block of cache by its key) because of the O(1) lookup time of the hash map that indexes the DLL that allows us to skip directly to that Node in the DLL instead of traversing (as well as O(1) time when deleting an invalidated item from the hash map),
-        and we get O(1) insert time when adding a Node to the DLL's tail
+        and we get O(1) insert time when adding a Node anywhere into the DLL (for our purposes we insert only at the DLL's tail), and O(1) time when removing a Node anywhere from the DLL. Thus any get or put operation on the LRU cache is O(1).
+    
+    There is an optional miss_callback that can be supplied to the 
     """
-    def __init__(self, max_size : int = 1000, max_age : int = 86400, read_callback : Callable[[Hashable], Any] = None):
+    def __init__(self, max_size : int = 1000, max_age : int = 86400, miss_callback : Callable[[Hashable], Any] = None):
         self.max_size = max_size # cache capacity
         self.max_age = max_age # cache expiration
         self.hash_map = {} # lookup table for the cache nodes
@@ -54,28 +56,49 @@ class LRUCache:
         self.head.next = self.tail # connect the head and tail at the start since the DLL is empty
         self.tail.prev = self.head # as the DLL grows, Nodes are added between the head and tail, that remain as dummy nodes
 
-        self.read_callback = read_callback # can be None
+        if (miss_callback is not None):
+            set_miss_callback(miss_callback)
+        else:
+            self.miss_callback = None
 
-        self.hits, self.misses, self.evictions, self.expiries = 0, 0, 0, 0 # cache performance info
+        self.hits, self.misses, self.evictions, self.expiries = 0, 0, 0, 0 # intialize cache performance info
+
+    def set_miss_callback(self, miss_callback : Callable[[Hashable], Any]):
+        """Public method to set the callback function that will be used by the LRUCache instance when a get method call on itself fails (i.e. cache miss).
+        The miss_callback parameter is expected to be a callable accepting a key argument (that is hashable such that it can be used as a key in the hash map) and returning an appropriate value.
+        The callback function is used when the LRUCache receives a get method call with a key argument that does not correspond to any Node currently in the cache. The key will then be passed to this callable, and the callable is expected to produce some value from this key.
+        The value returned by the callable is then put in the cache under the key passed to the get method call, and the value returned by the callable is also returned to the caller of the get method call.
+        Thus if a callback is supplied to the LRUCache instance, the get method call behaves the same to the caller regardless of whether a cache hit or miss occured (albeit slower depending on the speed of the callback supplied).
+        This functionality is meant to reduce the overhead incurred by the cache consumer that must catch the KeyError otherwise raised when the key passed to the get method call does not correspond to any Node currently in the cache, then internally call some function to produce the value, then call the set method to place the new value in the cache."""
+        if callable(miss_callback):
+            self.miss_callback == miss_callback
+        else:
+            ValueError("callback argument " + str(miss_callback) + " must be callable.")
 
     def get(self, key : Hashable):
-        if key in self.hash_map: # .keys(), if the requested key is in the Cache's hash map, then the Node with that key will be somewhere in the DLL
+        if key in self.hash_map: # if the requested key is in the Cache's hash map, then the Node with that key will be somewhere in the DLL
             node = self.hash_map[key] # O(1) find the Node object by its key in the hash map
             self._remove(node) # remove the node from its current position in the DLL, to eventually be reordered as the most recently used item in the DLL (if it has not expired)
 
             if (node.get_time_since_last_refresh() < self.max_age): # if the node has not yet expired (it was last updated more recently than the max age threshold)
                 self.hits += 1
-                self._add(node) # add the node back to the DLL, but as the most recent item (adjacent to the DLL tail dummy node)
-                return node.value 
+                self._add(node) # add the node back to the DLL, but as the most recent item (adjacent to the DLL's tail dummy node)
+                return node.value # note that this does not refresh the timestamps on this node
             else: # node expired 
                 self.expiries += 1
-                del self.hash_map[node.key] # remove referencee from the hash map, the node is not added back to the DLL so remove its indexed reference from the hash map
+                # the node stays removed from the DLL at this stage. depending on whether a callback was supplied to the LRUCache instance, the node's key will be removed from the ahsh map, or the Node will be put back int the DLL 
 
         self.misses += 1 # misses include expiries
-        if (self.read_callback in None): # if there was no provided callback (or it was provided as None)
-            raise KeyError(key) # 
-        else:
-            pass
+        if (self.miss_callback is not None): # if there was a valid provided callback
+            try:
+                node = Node(key, self.read_callback(key)) # updates timestamps
+                self._add(node) # add this new node as MRU 
+                return node.value
+            except TypeError: # callback did not have the right signature
+                pass
+
+        del self.hash_map[node.key] # remove reference from the hash map, the node is not added back to the DLL so remove its indexed reference from the hash map
+        raise KeyError(key) # only if the key passed to the get method call does not correspond to any Node currently in the cache, and there was no callback function supplied to handle cache misses
 
     def put(self, key : Hashable, value : Any):
         if (key in self.hash_map):
@@ -94,7 +117,7 @@ class LRUCache:
 
     def cache_info(self):
         CacheInfo = namedtuple('Info', 'hits misses max_age expiries curr_size max_size evictions')
-        return CacheInfo(self.hits, self.misses, self.max_age, self.expiries, len(self.hash_map), self.max_size, self.evictions)
+        return CacheInfo(self.hits, self.misses, self.max_age, self.expiries, self.size(), self.max_size, self.evictions)
 
     def _remove(self, node):
         prev_node = node.prev
@@ -102,7 +125,7 @@ class LRUCache:
 
         prev_node.next = next_node # connect previous node to the node's next
         next_node.prev = prev_node # connect next node to the node's previous
-        # the node is skipped over in the DLL
+        # the node is skipped over in the DLL, but not deleted as the object itself may be added back into the DLL (in the case of moving a node to the DLL tail)
 
     def _add(self, node):
         most_recent_node = self.tail.prev # the node at the tail of the DLL (i.e. right before the dummy tail node) is the one that has been most recently retrieved or updated
