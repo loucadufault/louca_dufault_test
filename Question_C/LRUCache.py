@@ -91,7 +91,7 @@ class LRUCache:
         self.misses += 1 # misses include expiries
         if (self.miss_callback is not None): # if there was a valid provided callback
             try:
-                node = Node(key, self.read_callback(key)) # updates timestamps
+                node = Node(key, self.read_callback(key)) # timestamps set to now
                 self._add(node) # add this new node as MRU 
                 return node.value
             except TypeError: # callback did not have the right signature
@@ -101,14 +101,15 @@ class LRUCache:
         raise KeyError(key) # only if the key passed to the get method call does not correspond to any Node currently in the cache, and there was no callback function supplied to handle cache misses
 
     def put(self, key : Hashable, value : Any):
-        if (key in self.hash_map):
-            self._remove(self.hash_map[key])
-        node = Node(key, value) # updates timestamps
-        self._add(node)
-        self.hash_map[key] = node
-        if (len(self.hash_map) > self.max_size):
+        if (key in self.hash_map): # if the requested key is in the Cache's hash map, then the Node with that key will be somewhere in the DLL
+            self._remove(self.hash_map[key]) # to update the cache block by the given key, we need to delete the Node object representing the cache block and create a new Node object and put it in the DLL as MRU
+        node = Node(key, value) # timestamps set to now
+        self._add(node) # add to DLL tail (MRU)
+        self.hash_map[key] = node # update the references indexed by the key in the hash map (only the value of the item in the hash map changes, the key remains) 
+
+        if (len(self.hash_map) > self.max_size): # LRUCache has reached its maximum size
             self.evictions += 1
-            node = self.head.next
+            node = self.head.next # LRU node is at the DLL head (adjacent to head dummy node)
             self._remove(node)
             del self.hash_map[node.key]
 
