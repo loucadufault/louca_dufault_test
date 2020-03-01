@@ -48,6 +48,11 @@ class LRUCache:
     There is an optional miss_callback that can be supplied to the 
     """
     def __init__(self, max_size : int = 1000, max_age : int = 86400, miss_callback : Callable[[Hashable], Any] = None):
+        if (max_size <=0):
+            raise ValueError(max_size)
+        if (max_age <= 0):
+            raise ValueError(max_age)
+        
         self.max_size = max_size # cache capacity
         self.max_age = max_age # cache expiration
         self.hash_map = {} # lookup table for the cache nodes
