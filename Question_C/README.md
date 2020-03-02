@@ -1,21 +1,51 @@
 ### Actors
-The Geodistributed LRU Cache (or 'GeoLRUCache' hereafter) admin (or 'admin' hereafter) is the actor responsible for setting up the geodistributed cache, and maintaining (Maintenance) it.
+The Geodistributed LRU Cache (or 'GeoLRUCache' hereafter) admin (or 'admin' hereafter) is the actor responsible for setting up the geodistributed cache, and maintaining it
 
 The GeoLRUCache client (or 'client' hereafter) is the actor who will exploit the cache by optionally putting data in the cache and expecting that getting data from the cache will satisfy the 7 Functional Requirements given in the instructions
+
+The GeoLRUCache database (or 'database' hereafter) is the actor who will persist the data that is shared by the proxies on the central origin machine (either local to the machine or virtual, either way there is only a single database that is accessed only by the origin server)
 
 ### Roles
 Admin is expected to:
 - initialize an instance of the Origin class on a central machine that will act as the origin server for all subsequently created proxy servers
-- provide this origin instance with a database instance, that will act as the central repository persistence that will
-- ensure the database instance can handle simultaneous queries and inserts (perhaps by using a concurrent db implementation like PostgreSQL, or by ensuring incoming queries and inserts are staggered as transactions)
+- provide this origin instance with a database instance
+- maintain the GeoLRUCache across machines
+- know the coordinates of potential servers that may host new potential proxy instances
+- deploy new proxy instances as needed on the potential servers that can communicate with Client and with origin server
 
 Client is expected to:
-- have an initial access to the origin server as a given
-- have access to its own coordinates (the request coordinates)
-- request from the origin server a reference to the nearest proxy by providing its coordinates
-- perform all subsequent interactions with the cache via this proxy (note that multiple clients may share the same proxy) until either until the proxy suffers a network failure or crash (Scenario 1)
+- hold a reference to the origin server, even once Client is assigned a proxy server
+- know its own coordinates (the request coordinates)
+- request a reference to the nearest proxy server based on its own coordinates
+- perform all interactions with the cache via the proxy that it was given (a.k.a. its assigned proxy) until the proxy suffers a network failure or crash
+- report a network failure or crash of its assigned proxy to the origin server, and request a new nearest proxy server besides the failed proxy
+- potentially share its assigned proxy server with other clients
+
+Database is expected to:
+- be exposed to the origin server, and only the origin server as a database instance (the Database class is an interface that may be implemented any number of ways)
+- implement a method to get a value (where the value may be of Any type) from the persitence by key (where the key may be of any Hashable type)
+- implement a method to put a value (where the value may be of Any type) in the persistence indexed by its key (where the key may be of any Hashable type)
+- ensure it can handle simultaneous queries and inserts (perhaps by using a concurrent db implementation like PostgreSQL, or by ensuring incoming queries and inserts are staggered as transactions)
 
 # Scenarios
+
+## Initialization of GeoLRUCache
+### Actor
+Admin
+### Intention
+The intention of admin is to initialize an instance of GeoLRUCache by selecting a machine hosting an origin instance to act as origin server and providing it with parameters to configure the LRUCache instances held by each eventual proxy and a reference to a database.
+
+### Preconditions
+There exists a server upon which the origin instance may be hosted that also hosts a database (either locally or virtually)
+
+### Main Scenario
+Admin provides the parameters to configure the LRUCache instances of the eventual Proxy instances to the Origin class
+Admin provides the reference to the database 
+
+
+## Request from the origin server a reference to the nearest proxy by providing its coordinates
+
+
 ## Get data from proxy server 
 ### Actor
 Client
@@ -28,7 +58,7 @@ Client has been assigned to an operational proxy server
 The assigned proxy server holds a reference to the origin server
 The LRUCache of the assigned proxy server has a miss callback provided that accepts a key parameter and returns a value (by retrieving the value directly from the origin server)
 
-### Main scenario
+### Main Scenario
 Client performs a get method call on its assigned proxy instance providing the key as a parameter
 The proxy instance transmits the get method call to a get method call on its  internal LRUCache instance with the same key
 The LRUCache instance contains a valid (not expired) copy of the value (cache hit), and it is retrieved by its key and returned to the Proxy instance caller, that returns the value to the requesting client
@@ -81,4 +111,6 @@ The proxy instance that is running on the proxy server that suffered the network
 Load balancing
 Origin server occasionally polls the cache info of the LRUCache instances of its proxies, and uses the performance algorithm to determine a ranking of which cache needs load balancing, and creates a proxy near the coordinates of the stressed cache
 
-### Scenario 3
+## Maintenance
+### Actor
+Admin
