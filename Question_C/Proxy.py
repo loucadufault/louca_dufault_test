@@ -1,4 +1,3 @@
-# TODO discuss load balancing
 from typing import Tuple, Hashable, List
 from Question_C.utils import distance, MAX_DISTANCE
 from Question_C.LRUCache import LRUCache
@@ -22,7 +21,9 @@ class ProxyFactory:
                 raise ValueError(new_coordinates)
 
         proxy = Proxy(new_coordinates, LRUCache(max_size=self.max_size_of_LRUCache, max_age=self.max_age_of_LRUCache), self.origin)
-        proxy.LRUCache.set_miss_callback(proxy.origin.get)
+        proxy.LRUCache.set_miss_callback(self.origin.get)
+        self.origin.proxies[new_coordinates] = proxy
+        self.origin._deploy_proxy(proxy)
         return proxy
 
 class Proxy:
@@ -45,4 +46,4 @@ class Proxy:
 
     def put(self, key : Hashable, value : Any):
         self.LRUCache.set(key, value)
-        self.origin.set(key, value) # propagate the update to this value to the shared repository
+        self.origin.set(key, value) # propagate the update to this value to the shared repository so that the updated value may be later propagated to other proxies when they handle a cache miss on this value
