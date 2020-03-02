@@ -88,7 +88,7 @@ As a side effect, the value retrieved from the LRUCache instance of the client's
 ### Alternative Scenario
 Client performs a get method call on its assigned proxy instance providing the key as a parameter.
 
-The proxy instance transmits the get method call to a get method call on its  internal LRUCache instance with the same key.
+The proxy instance transmits the get method call to a get method call on its internal LRUCache instance with the same key.
 
 The LRUCache instance does not contain a valid (not expired) copy of the value (cache miss), and it transmits the get method to its miss callback.
 
@@ -98,18 +98,35 @@ The miss callback produces the value indexed by the key as it appears in the cen
 
 As a side effect, the value retrieved from the origin server is placed in the LRUCache instance of the client's assigned proxy as the MRU item indexed by its key and its last refresh timestamps are reset to the current time.
 
-## Put data in proxy server and reflect data change in central database and eventually in all other proxy servers
+## Put data in proxy server and reflect data change in central database and eventually in other proxy servers
 ### Actor
 Client
 ### Intention
-The intention of the client is to place data in the cache by providing a value and it's key, and to have the data change in the cache of its assigned proxy be propagated to the database of the origin server, and eventually to all other proxy servers.
+The intention of the client is to place data in the cache by providing a value and it's key, and to have the data change in the cache of its assigned proxy be propagated to the database of the origin server, and eventually to other proxy servers.
 ### Precondition
 An origin server exists with at least one references to a proxy server.
 
 Client is assigned to a proxy server.
 ### Main Scenario
+Client performs a put method call on its assigned proxy instance providing the key and value as parameters.
 
+The proxy instance transmits the put method call to a put method call on its internal LRUCache instance with the same key and value parameters.
 
+The LRUCache instance creates a new cache block with the supplied value indexed by the supplied key if there was a valid copy if the value in the cache, or updates the value of the cache block indexed by the supplied key with the supplied value if there was a valid copy of the value in the cache.
+
+As a side effect, the value put is placed in the LRUCache instance of the client's assigned proxy as the MRU item indexed by its key and its last refresh timestamps are reset to the current time.
+
+The put method call on the LRUCache instance of client's assigned proxy resolves. 
+
+The proxy instance transmits the put method call to a put method call on its Origin instance with the same key and value parameters.
+
+The origin server puts the supplied value in its database as indexed by the supplied key (corresponding to either an insert or update depending on whether the supplied key was already in the database).
+
+The data change in client's assigned proxy is now reflected in the central database.
+
+Eventually, as other proxy servers handle cache misses by their respective clients on the same data, they will retrieve the data from the origin server database and return this data as it was put by the initial client in its assigned proxy.
+
+The data change in client's assigned proxy is eventually reflected in other proxy servers as they handle get requests by their respective clients on that same data, if that data is not contained as a valid copy in their personal LRUCache instances (i.e. a cache miss).
 ## Network failure or crash
 ### Actor
 Client
@@ -140,6 +157,7 @@ Client continues interacting with its newly assigned proxy server
 The failed proxy instance that is running on the proxy server that suffered the network failure or crash is removed from the origin server's references to proxy servers to ensure it is not assigned to future clients until it is manually reviewed by Admin.
 
 Client again requests from the origin server a reference to the nearest proxy by providing its coordinates (the returned proxy instance is not the reported failed proxy).
+
 Client continues interacting with the new proxy server it was assigned.
 
 ## Load balancing
@@ -170,7 +188,7 @@ Admin
 ### Intention
 The intention of admin is to maintain the GeoLRUCache by reviewing proxy servers that may have experienced network failures or crashes, or to load balance the network of proxy servers by adding another proxy server to alleviate the load of the most stressed proxy server.
 ### Precondition
-An origin server exists with at least one reference to a proxy server
+An origin server exists with at least one reference to a proxy server.
 ### Main Scenario
 Admin accesses the runtime environment of the origin server.
 
