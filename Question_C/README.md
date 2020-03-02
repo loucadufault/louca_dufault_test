@@ -1,5 +1,5 @@
 # Actors
-The Geodistributed LRU Cache (or 'GeoLRUCache' hereafter) admin (or 'admin' hereafter) is the actor responsible for setting up the geodistributed cache, and maintaining it.
+The Geo Distributed LRU Cache (or 'GeoLRUCache' hereafter) admin (or 'admin' hereafter) is the actor responsible for setting up the geodistributed cache, and maintaining it.
 
 The GeoLRUCache client (or 'client' hereafter) is the actor who will exploit the cache by optionally putting data in the cache and expecting that getting data from the cache will satisfy the 7 Functional Requirements given in the instructions.
 
