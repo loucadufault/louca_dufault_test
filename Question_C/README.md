@@ -1,11 +1,11 @@
-### Actors
+# Actors
 The Geodistributed LRU Cache (or 'GeoLRUCache' hereafter) admin (or 'admin' hereafter) is the actor responsible for setting up the geodistributed cache, and maintaining it
 
 The GeoLRUCache client (or 'client' hereafter) is the actor who will exploit the cache by optionally putting data in the cache and expecting that getting data from the cache will satisfy the 7 Functional Requirements given in the instructions
 
 The GeoLRUCache database (or 'database' hereafter) is the actor who will persist the data that is shared by the proxies on the central origin machine (either local to the machine or virtual, either way there is only a single database that is accessed only by the origin server)
 
-### Roles
+# Roles
 Admin is expected to:
 - initialize an instance of the Origin class on a central machine that will act as the origin server for all subsequently created proxy servers
 - provide this origin instance with a database instance
