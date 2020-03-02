@@ -1,9 +1,9 @@
 # Actors
-The Geodistributed LRU Cache (or 'GeoLRUCache' hereafter) admin (or 'admin' hereafter) is the actor responsible for setting up the geodistributed cache, and maintaining it
+The Geodistributed LRU Cache (or 'GeoLRUCache' hereafter) admin (or 'admin' hereafter) is the actor responsible for setting up the geodistributed cache, and maintaining it.
 
-The GeoLRUCache client (or 'client' hereafter) is the actor who will exploit the cache by optionally putting data in the cache and expecting that getting data from the cache will satisfy the 7 Functional Requirements given in the instructions
+The GeoLRUCache client (or 'client' hereafter) is the actor who will exploit the cache by optionally putting data in the cache and expecting that getting data from the cache will satisfy the 7 Functional Requirements given in the instructions.
 
-The GeoLRUCache database (or 'database' hereafter) is the actor who will persist the data that is shared by the proxies on the central origin machine (either local to the machine or virtual, either way there is only a single database that is accessed only by the origin server)
+The GeoLRUCache database (or 'database' hereafter) is the actor who will persist the data that is shared by the proxies on the central origin machine (either local to the machine or virtual, either way there is only a single database that is accessed only by the origin server).
 
 # Roles
 Admin is expected to:
@@ -24,7 +24,7 @@ Client is expected to:
 Database is expected to:
 - be exposed to the origin server, and only the origin server as a database instance (the Database class is an interface that may be implemented any number of ways)
 - implement a method to get a value (where the value may be of Any type) from the persitence by key (where the key may be of any Hashable type)
-- implement a method to put a value (where the value may be of Any type) in the persistence indexed by its key (where the key may be of any Hashable type)
+- implement a method to put a value (where the value may be of Any type) in the persistence indexed by its key (where the key may be of any Hashable type), which may translate to either an insert or an update to the table depending on whether the key already existed in the table (the origin server should be agnostic to this distinction)
 - ensure it can handle simultaneous queries and inserts (perhaps by using a concurrent db implementation like PostgreSQL, or by ensuring incoming queries and inserts are staggered as transactions)
 
 # Scenarios
@@ -33,15 +33,19 @@ Database is expected to:
 ### Actor
 Admin
 ### Intention
-The intention of admin is to initialize an instance of GeoLRUCache by selecting a machine hosting an origin instance to act as origin server and providing it with parameters to configure the eventual Proxy instances hosted on proxy servers.
+The intention of admin is to initialize an instance of GeoLRUCache by selecting a machine hosting an Origin instance to act as origin server and providing it with parameters to configure the eventual Proxy instances hosted on proxy servers.
 
 ### Preconditions
-There exists a server upon which the origin instance may be hosted that also hosts a database (either locally or virtually)
+There exists a server upon which the Origin instance may be hosted, that also hosts a database (either locally or virtually).
 
 ### Main Scenario
-Admin provides the parameters to configure the LRUCache instances of the eventual Proxy instances to the Origin class
-Admin provides the reference to the database 
+Admin provides the parameters to configure the LRUCache instances of the eventual Proxy instances, and the database instance representing Database actor to initialize an Origin instance that will be hosted on the origin server.
 
+Admin provides the Origin instances with a dictionary of potential servers where the keys are the coordinates of each server, and the values are the server instances themselves (left as an abstract concept since it is outside of the scope of this assignemnt).
+
+Admin adds proxies to the GeoLRUCache network, by specifying the coordinates of the server that will host the new Proxy instance amongst the keys in the dictionary of potential servers.
+
+New Proxy instances are initialized (each with its personal LRUCache instance) and each is mapped to a distinct proxy server with distinct coordinates, and references to these proxies servers are kept in the Origin instance for future assignment of clients to proxy servers.
 
 ## Request from the origin server a reference to the nearest proxy by providing its coordinates
 
@@ -54,30 +58,40 @@ Client
 The intention of client is to retrieve a data from the cache by providing the value's key
 
 ### Precondition
-Client has been assigned to an operational proxy server
-The assigned proxy server holds a reference to the origin server
-The LRUCache of the assigned proxy server has a miss callback provided that accepts a key parameter and returns a value (by retrieving the value directly from the origin server)
+Client has been assigned to an operational proxy server.
+
+The assigned proxy server holds a reference to the origin server.
+
+The LRUCache of the assigned proxy server has a miss callback provided that accepts a key parameter and returns a value (by retrieving the value directly from the origin server).
 
 ### Main Scenario
-Client performs a get method call on its assigned proxy instance providing the key as a parameter
-The proxy instance transmits the get method call to a get method call on its  internal LRUCache instance with the same key
-The LRUCache instance contains a valid (not expired) copy of the value (cache hit), and it is retrieved by its key and returned to the Proxy instance caller, that returns the value to the requesting client
- As a side effect, the value retrieved from the LRUCache instance of the client's assigned proxy is placed back in the cache as the MRU item indexed by its key
+Client performs a get method call on its assigned proxy instance providing the key as a parameter.
+
+The proxy instance transmits the get method call to a get method call on its  internal LRUCache instance with the same key.
+
+The LRUCache instance contains a valid (not expired) copy of the value (cache hit), and it is retrieved by its key and returned to the Proxy instance caller, that returns the value to the requesting client.
+
+As a side effect, the value retrieved from the LRUCache instance of the client's assigned proxy is placed back in the cache as the MRU item indexed by its key.
 
 ### Alternative scenario
-Client performs a get method call on its assigned proxy instance providing the key as a parameter
-The proxy instance transmits the get method call to a get method call on its  internal LRUCache instance with the same key
-The LRUCache instance does not contain a valid (not expired) copy of the value (cache miss), and it transmits the get method to its miss callback
-The miss callback should be a get method on the origin instance, which is expected to accept a key parameter and return a value by retrieving from its database
-The miss callback produces the value indexed by the key as it appears in the central repository persistence, and returns it up the call stack until it is returned to client by the initial get method call performed on the client's assigned proxy
-As a side effect, the value retrieved from the origin server is placed in the LRUCache instance of the client's assigned proxy as the MRU item indexed by its key and its last refresh timestamps are reset to the current time
+Client performs a get method call on its assigned proxy instance providing the key as a parameter.
+
+The proxy instance transmits the get method call to a get method call on its  internal LRUCache instance with the same key.
+
+The LRUCache instance does not contain a valid (not expired) copy of the value (cache miss), and it transmits the get method to its miss callback.
+
+The miss callback should be a get method on the origin instance, which is expected to accept a key parameter and return a value by retrieving from its database.
+
+The miss callback produces the value indexed by the key as it appears in the central repository persistence, and returns it up the call stack until it is returned to client by the initial get method call performed on the client's assigned proxy.
+
+As a side effect, the value retrieved from the origin server is placed in the LRUCache instance of the client's assigned proxy as the MRU item indexed by its key and its last refresh timestamps are reset to the current time.
 
 ## Put data in proxy server and reflect change in repository persistence
 ### Actor
 Client
 
 ### Intention
-The intention of the client is to place data in the cache by providing a value and it's key
+The intention of the client is to place data in the cache by providing a value and it's key.
 
 ### Precondition
 
@@ -87,30 +101,67 @@ The intention of the client is to place data in the cache by providing a value a
 Client
 
 ### Intention
-The intention of client is to continue exploiting the services of the GeoLRUCache after the proxy server assigned to the client suffers a network failure or crash 
+The intention of client is to continue exploiting the services of the GeoLRUCache after the proxy server assigned to the client suffers a network failure or crash.
 
 ### Precondition
-Client holds a reference to the origin server (that they have used to initially gain access to the proxy server that has now failed)
-Client has access to its own coordinates
-The origin server is connected to at least one other proxy servers that is operational
+Client holds a reference to the origin server (that they have used to initially gain access to the proxy server that has now failed).
+
+Client has access to its own coordinates.
+
+The origin server is connected to at least one other proxy servers that is operational.
+
 
 ### Main Scenario
-Client interacts with its assigned proxy server
-The assigned proxy server times out, or otherwise fails to satisfy the client request and indicates to the client a network failure or crash
-Client requests the origin server remove the proxy server from its associated proxies
+Client interacts with its assigned proxy server.
+
+The assigned proxy server times out, or otherwise fails to satisfy the client request and indicates to the client a network failure or crash.
+
+Client reports the failed proxy server to the origin server.
+
+The origin server removes the reported proxy from its references to proxies servers and added to its references to failed proxy servers for logging and maintenance.
+
 Client request the origin server to assign it to another operational proxy server that it is nearest to (after the failed proxy server)
+
 Client continues interacting with its newly assigned proxy server
+The failed proxy instance that is running on the proxy server that suffered the network failure or crash is removed from the origin server's references to proxy servers to ensure it is not assigned to future clients until it is manually reviewed by Admin.
 
-### Success
-The proxy instance that is running on the proxy server that suffered the network failure or crash is deleted and its internal cache is wiped, the next nearest operational proxy server is assigned to another client, the origin server is associated to one less proxy instance
-
-### Failure
-
+Client again requests from the origin server a reference to the nearest proxy by providing its coordinates (the returned proxy instance is not the reported failed proxy).
+Client continues interacting with the new proxy server it was assigned.
 
 ## Load balancing
-Load balancing
+### Actor
+Admin
+### Intention
+The intention of admin is to load balance the network of proxy servers by adding a single proxy to alleviate the load on the proxy server that is the most stressed
+
+### Preconditions
+An origin server exists with at least two references to proxy servers
+
+The proxy servers experience a different amount of stress as measured by their stress score
+
+### Main Scenario
+
+
 Origin server occasionally polls the cache info of the LRUCache instances of its proxies, and uses the performance algorithm to determine a ranking of which cache needs load balancing, and creates a proxy near the coordinates of the stressed cache
 
 ## Maintenance
 ### Actor
 Admin
+### Intention
+The intention of admin is to maintain the GeoLRUCache by reviewing proxy servers that may have experienced network failures or crashes, or to load balance the network of proxy servers by adding another proxy server to alleviate the load of the most stressed proxy server.
+
+### Precondition
+An origin server exists with at least one reference to a proxy server
+
+### Main Scenario
+Admin accesses the runtime environment of the origin server.
+
+Admin reviews the dictionary of failed proxies (as reported by those proxies clients).
+
+Admin reviews the proxies in the dictionary, and restores them to be operational, and then adds them to the origin server's references to proxies such that the now restarted proxy server may begin to serve nearby clients, if it happens to be the nearest proxy server to a client requesting a proxy server from the origin server.
+
+Admin calls the load balancing method on the Origin instance, to load balance the most stressed proxy server by adding another proxy server hosted on one of the remaining potential servers nearest to that most stressed proxy.
+
+Admin adds potential servers (a key-value where the key is the server's coordinates and the value is the server, an abstract concept) to the Origin instance's dictionary of potential servers, which will be made as a possible host for future Proxy instances that will be added.
+
+
