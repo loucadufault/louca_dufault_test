@@ -33,7 +33,7 @@ Database is expected to:
 ### Actor
 Admin
 ### Intention
-The intention of admin is to initialize an instance of GeoLRUCache by selecting a machine hosting an origin instance to act as origin server and providing it with parameters to configure the LRUCache instances held by each eventual proxy and a reference to a database.
+The intention of admin is to initialize an instance of GeoLRUCache by selecting a machine hosting an origin instance to act as origin server and providing it with parameters to configure the eventual Proxy instances hosted on proxy servers.
 
 ### Preconditions
 There exists a server upon which the origin instance may be hosted that also hosts a database (either locally or virtually)
