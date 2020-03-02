@@ -1,15 +1,15 @@
 import math
 
-EARTH_RADIUS = 6378137 # m
-EARTH_CIRCUMFERENCE  = 40075000 # m
-MAX_DISTANCE = EARTH_CIRCUMFERENCE / 2
+EARTH_RADIUS = 6378137 # metres
+EARTH_CIRCUMFERENCE  = 40075000 # metres
+MAX_DISTANCE = EARTH_CIRCUMFERENCE / 2 # metres
+
 def radian(coordinate):
     return (math.pi * coordinate) / 180
 
 def distance(coordinates_1, coordinates_2):
      """
-     Haversine Formula: https://en.wikipedia.org/wiki/Haversine_formula
-     This function returns the distance between two pairs of latitude and longitude coordinates
+     This function returns the distance between two pairs of latitude and longitude coordinates using the Haversine Formula (https://en.wikipedia.org/wiki/Haversine_formula)
      """
 
      latitude_dist = radian(coordinates_2[0] - coordinates_1[0])

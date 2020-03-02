@@ -22,40 +22,8 @@ class Proxy:
         self.LRUCache.set_miss_callback(self.origin.get)
     
     def get(self, key : Hashable):
-        return self.LRUCache.get(key)
+        return self.LRUCache.get(key) # get the value from the cache if it is in the cache, otherwise use the miss_callback function provided to the LRUCache instance of this proxy to retrieve the data from the origin repository
 
     def put(self, key : Hashable, value : Any):
-        return self.LRUCache.set(key, value)
-
-    def _set_network(self, network : Dict[Tuple[float, float], Any]):
-        self.network = network
-        self.network[self.coordinates] = self
-
-    def create_and_add_proxy_to_network(self, coordinates : Tuple[float, float]):
-        proxy = self.origin.proxyFactory.produce(coordinates)
-        self.network[coordinates] = proxy
-        proxy._set_network(self.network)
-
-    def _get_coordinates_of_nearest_proxy(self, client_coordinates : Tuple[float, float]):
-        least_distance = MAX_DISTANCE
-        coordinates_of_nearest_proxy = self.coordinates # default
-
-        for coordinates, proxy in self.network.items():
-            distance_from_client_to_proxy = distance(client_coordinates, coordinates)
-            if (distance_from_client_to_proxy < least_distance):
-                least_distance = distance_from_client_to_proxy # update
-                coordinates_of_nearest_proxy = coordinates # keep track of
-
-        return coordinates_of_nearest_proxy
-    
-    def get_nearest_proxy(self, client_coordinates: Tuple[float, float]):
-        return self.network[self._get_coordinates_of_nearest_proxy(client_coordinates)]
-
-
-
-
-
-
-
-
-    
+        self.LRUCache.set(key, value)
+        self.origin.set(key, value) # propagate the update to this value to the shared repository
