@@ -132,17 +132,25 @@ Client continues interacting with the new proxy server it was assigned.
 ### Actor
 Admin
 ### Intention
-The intention of admin is to load balance the network of proxy servers by adding a single proxy to alleviate the load on the proxy server that is the most stressed
+The intention of admin is to load balance the network of proxy servers by adding a single proxy to alleviate the load on the proxy server that is the most stressed.
 
 ### Preconditions
-An origin server exists with at least two references to proxy servers
+An origin server exists with at least two references to proxy servers.
 
-The proxy servers experience a different amount of stress as measured by their stress score
+The proxy servers experience a different amount of stress as measured by their stress score.
 
 ### Main Scenario
+Admin accesses the runtime environment of the origin server.
 
+Admin calls the load balancing method on the Origin instance.
 
-Origin server occasionally polls the cache info of the LRUCache instances of its proxies, and uses the performance algorithm to determine a ranking of which cache needs load balancing, and creates a proxy near the coordinates of the stressed cache
+The method call iterates through all proxies referenced by the origin server, and calculates the stress score for each one, and thus determines the most stressed proxy server that has the highest stress score.
+The stress score of a proxy server is determined based on the cache info metrics of its personal LRUCache instance based on this formula:
+
+`((cache_info.hits + cache_info.evictions) - (cache_info.expiries + cache_info.misses)) / (cache_info.hits + cache_info.evictions + cache_info.expiries + cache_info.misses)`
+
+The method adds a Proxy instance on the potential server closest to the most sressed server, effectively creating a new proxy server near the most stressed proxy server to handle some of the load of the most stressed proxy server, thus alleviating some of its stress over time.
+
 
 ## Maintenance
 ### Actor
@@ -163,5 +171,3 @@ Admin reviews the proxies in the dictionary, and restores them to be operational
 Admin calls the load balancing method on the Origin instance, to load balance the most stressed proxy server by adding another proxy server hosted on one of the remaining potential servers nearest to that most stressed proxy.
 
 Admin adds potential servers (a key-value where the key is the server's coordinates and the value is the server, an abstract concept) to the Origin instance's dictionary of potential servers, which will be made as a possible host for future Proxy instances that will be added.
-
-
