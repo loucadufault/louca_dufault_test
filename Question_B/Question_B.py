@@ -1,4 +1,4 @@
-from test_data import *
+from test_data import greater, greater_edge, equal, equal_edge, lesser, lesser_edge
 from Version import Version
 
 def version_compare(version_string1 : str, version_string2 : str):
@@ -36,7 +36,7 @@ def version_compare_validator(versions, oracle: bool):
     assert same_sign(version_compare(str(versions[0]), str(versions[1])), oracle)
     assert greatest_version(str(versions[0]), str(versions[1])) == [str(versions[1]), str(versions[0]), str(versions[0])][oracle+1]
 
-def main():
+def test():
     test_cases = [(Version(version_strings[0]), Version(version_strings[1])) for version_strings in greater + greater_edge + equal + equal_edge + lesser_edge + lesser] # build pairs of Version objects from tuples in the concatenation of test_data arrays
     test_oracles = (1,) * (len(greater) + len(greater_edge)) + (0,) * (len(equal) + len(equal_edge)) + (-1,) * (len(lesser_edge) + len(lesser)) # commas necessary
     test_results = {"pass": 0, "fail": 0}
@@ -58,6 +58,9 @@ def main():
 
     assert test_results["pass"] + test_results["fail"] == len(test_cases) # ensure all tests have been completed
     print("\nTest results:\n{} completed, {} failed".format(len(test_cases), test_results["fail"])) # display results
+
+def main():
+    test()
 
 if __name__ == '__main__': # if run standalone
     main() # unit test this module

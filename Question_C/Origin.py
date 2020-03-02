@@ -1,8 +1,8 @@
-from Question_C.Proxy import ProxyFactory, Proxy
-from Question_C.LRUCache import LRUCache
-from Question_C.utils import distance, stress, MAX_DISTANCE, LOWEST_STRESS
+from Proxy import ProxyFactory, Proxy
+from LRUCache import LRUCache
+from utils import distance, stress, MAX_DISTANCE, LOWEST_STRESS
 
-from typing import Hashable, List, Tuple, Any
+from typing import Hashable, List, Tuple, Dict, Any
 
 class Origin:
     def __init__(self, database, max_size_of_LRUCache : int, max_age_of_LRUCache: int, load_balancing_interval : int):
@@ -15,6 +15,9 @@ class Origin:
         
         self.potential_servers = dict() # an abstract dictionary of potential Server instances (kept abstract for simplicity, outside assignment scope) indexed by the physical coordinates of the server
         # used to deploy a Proxy instance onto a physical server on which it will be hosted, either in the context of Admin simply creating a new proxy, or Admin calling the load balance method to automatically add a proxy server to alleviate the load of the most stressed proxy server.
+
+    def _set_potential_servers(self, potential_servers : Dict[Tuple[float, float], Any]):
+        self.potential_servers = potential_servers
 
     def get(self, key : Hashable):
         '''
@@ -54,6 +57,9 @@ class Origin:
 
     def _get_coordinates_of_stressed_proxy(self):
         highest_stress = LOWEST_STRESS
+
+        if (len(self.proxies.keys() == 0)):
+            raise ValueError(self.proxies)
 
         for coordinates, proxy in self.proxies.items():
             stress_of_proxy = stress(proxy.LRUCache.cache_info())
@@ -96,7 +102,8 @@ class Origin:
 
     def report_failure(self, failed_coordinates : Tuple[float, float]):
         '''
-        Called by client to ensure that the proxy instance reported by its coordinates is no longer assigned to other clients until it is manually added back to the origin's proxies references.
+        Called by client to report a failed proxy server.
+        Ensures that the proxy instance reported by its coordinates is no longer assigned to other clients until it is manually added back to the origin's proxies references.
         Reported proxies (presumably having suffered a network failure or crash as detected by one of the proxy's assigned client(s)) are kept in the failed proxies for logging and maintenance purposes.
         '''
         failed_proxy = self.proxies.pop(failed_coordinates)

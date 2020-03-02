@@ -1,6 +1,6 @@
 from typing import Tuple, Hashable, List
-from Question_C.utils import distance, MAX_DISTANCE
-from Question_C.LRUCache import LRUCache
+from utils import distance, MAX_DISTANCE
+from LRUCache import LRUCache
 
 class ProxyFactory:
     '''

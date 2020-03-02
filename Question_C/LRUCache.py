@@ -19,7 +19,7 @@ class Node:
         self.last_refresh = time.monotonic() # now
 
     def _get_last_refresh(self):
-        return self.last_refresh if expires else time.monotonic()
+        return self.last_refresh if self.expires else time.monotonic()
 
     def get_time_since_last_refresh(self):
         return time.monotonic() - self._get_last_refresh()
