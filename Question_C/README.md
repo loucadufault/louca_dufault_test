@@ -34,36 +34,48 @@ Database is expected to:
 Admin
 ### Intention
 The intention of admin is to initialize an instance of GeoLRUCache by selecting a machine hosting an Origin instance to act as origin server and providing it with parameters to configure the eventual Proxy instances hosted on proxy servers.
-
-### Preconditions
+### Precondition
 There exists a server upon which the Origin instance may be hosted, that also hosts a database (either locally or virtually).
-
 ### Main Scenario
 Admin provides the parameters to configure the LRUCache instances of the eventual Proxy instances, and the database instance representing Database actor to initialize an Origin instance that will be hosted on the origin server.
 
 Admin provides the Origin instances with a dictionary of potential servers where the keys are the coordinates of each server, and the values are the server instances themselves (left as an abstract concept since it is outside of the scope of this assignemnt).
 
-Admin adds proxies to the GeoLRUCache network, by specifying the coordinates of the server that will host the new Proxy instance amongst the keys in the dictionary of potential servers.
+Admin optionally adds proxies to the GeoLRUCache network, by specifying the coordinates of the server that will host the new Proxy instance amongst the keys in the dictionary of potential servers.
 
 New Proxy instances are initialized (each with its personal LRUCache instance) and each is mapped to a distinct proxy server with distinct coordinates, and references to these proxies servers are kept in the Origin instance for future assignment of clients to proxy servers.
 
-## Request from the origin server a reference to the nearest proxy by providing its coordinates
+## Request a proxy server from the origin server 
+### Actor
+Client
+### Intention
+The intention of client is to receive a proxy instance nearest to its own coordinates with which it can interact.
+### Precondition
+An origin server exists with at least one references to a proxy server.
 
+Client has access to its own coordinates.
+### Main Scenario
+Client calls the method to get the nearest proxy on its Origin instance to which it holds a reference and provides its own coordinates to the method call as an argument.
+
+The method call iterates through all Proxy instances referenced by the Origin instance, and calculates the distance between the parameter coordinates and the coordinates of the proxy at the current iteration.
+
+The method call determines the coordinates of the Proxy instance with the least distance to the coordinates of client, and returns this nearest Proxy instance to client.
+
+Client begins interacting with this Proxy instance - it is said that the Proxy instance is assigned to the client and the client is assigned to this Proxy instance - until the Proxy instance suffers a network failure or crash.
 
 ## Get data from proxy server 
 ### Actor
 Client
-
 ### Intention
 The intention of client is to retrieve a data from the cache by providing the value's key
-
 ### Precondition
+An origin server exists with at least one references to a proxy server.
+
 Client has been assigned to an operational proxy server.
 
 The assigned proxy server holds a reference to the origin server.
 
 The LRUCache of the assigned proxy server has a miss callback provided that accepts a key parameter and returns a value (by retrieving the value directly from the origin server).
-
 ### Main Scenario
 Client performs a get method call on its assigned proxy instance providing the key as a parameter.
 
@@ -73,7 +85,7 @@ The LRUCache instance contains a valid (not expired) copy of the value (cache hi
 
 As a side effect, the value retrieved from the LRUCache instance of the client's assigned proxy is placed back in the cache as the MRU item indexed by its key.
 
-### Alternative scenario
+### Alternative Scenario
 Client performs a get method call on its assigned proxy instance providing the key as a parameter.
 
 The proxy instance transmits the get method call to a get method call on its  internal LRUCache instance with the same key.
@@ -86,31 +98,33 @@ The miss callback produces the value indexed by the key as it appears in the cen
 
 As a side effect, the value retrieved from the origin server is placed in the LRUCache instance of the client's assigned proxy as the MRU item indexed by its key and its last refresh timestamps are reset to the current time.
 
-## Put data in proxy server and reflect change in repository persistence
+## Put data in proxy server and reflect data change in central database and eventually in all other proxy servers
 ### Actor
 Client
-
 ### Intention
-The intention of the client is to place data in the cache by providing a value and it's key.
-
+The intention of the client is to place data in the cache by providing a value and it's key, and to have the data change in the cache of its assigned proxy be propagated to the database of the origin server, and eventually to all other proxy servers.
 ### Precondition
+An origin server exists with at least one references to a proxy server.
+
+Client is assigned to a proxy server.
+### Main Scenario
 
 
 ## Network failure or crash
 ### Actor
 Client
-
 ### Intention
 The intention of client is to continue exploiting the services of the GeoLRUCache after the proxy server assigned to the client suffers a network failure or crash.
-
 ### Precondition
+An origin server exists with at least two references to proxy servers.
+
 Client holds a reference to the origin server (that they have used to initially gain access to the proxy server that has now failed).
+
+Client is assigned to a proxy server.
 
 Client has access to its own coordinates.
 
 The origin server is connected to at least one other proxy servers that is operational.
-
-
 ### Main Scenario
 Client interacts with its assigned proxy server.
 
@@ -133,12 +147,10 @@ Client continues interacting with the new proxy server it was assigned.
 Admin
 ### Intention
 The intention of admin is to load balance the network of proxy servers by adding a single proxy to alleviate the load on the proxy server that is the most stressed.
-
-### Preconditions
+### Precondition
 An origin server exists with at least two references to proxy servers.
 
 The proxy servers experience a different amount of stress as measured by their stress score.
-
 ### Main Scenario
 Admin accesses the runtime environment of the origin server.
 
@@ -157,10 +169,8 @@ The method adds a Proxy instance on the potential server closest to the most sre
 Admin
 ### Intention
 The intention of admin is to maintain the GeoLRUCache by reviewing proxy servers that may have experienced network failures or crashes, or to load balance the network of proxy servers by adding another proxy server to alleviate the load of the most stressed proxy server.
-
 ### Precondition
 An origin server exists with at least one reference to a proxy server
-
 ### Main Scenario
 Admin accesses the runtime environment of the origin server.
 
@@ -168,6 +178,8 @@ Admin reviews the dictionary of failed proxies (as reported by those proxies cli
 
 Admin reviews the proxies in the dictionary, and restores them to be operational, and then adds them to the origin server's references to proxies such that the now restarted proxy server may begin to serve nearby clients, if it happens to be the nearest proxy server to a client requesting a proxy server from the origin server.
 
-Admin calls the load balancing method on the Origin instance, to load balance the most stressed proxy server by adding another proxy server hosted on one of the remaining potential servers nearest to that most stressed proxy.
+Admin optionally calls the load balancing method on the Origin instance, to load balance the most stressed proxy server by adding another proxy server hosted on one of the remaining potential servers nearest to that most stressed proxy.
 
 Admin adds potential servers (a key-value where the key is the server's coordinates and the value is the server, an abstract concept) to the Origin instance's dictionary of potential servers, which will be made as a possible host for future Proxy instances that will be added.
+
+Admin optionally manually adds proxy servers by manually providing the coordinates of a potential server that will host the new Proxy instance.
